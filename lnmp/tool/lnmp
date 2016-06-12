@@ -1,0 +1,205 @@
+#!/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+
+# Check if user is root
+if [ $(id -u) != "0" ]; then
+    echo "Error: You must be root to run this script!"
+    exit 1
+fi
+
+echo "+-------------------------------------------+"
+echo "|             Manager for LNMP              |"
+echo "+-------------------------------------------+"
+
+PHPFPMPIDFILE=/opt/lnmp/php/var/run/php-fpm.pid
+
+arg1=$1
+arg2=$2
+
+lnmp_start()
+{
+    echo "Starting LNMP..."
+    /opt/lnmp/init.d/nginx start
+    /opt/lnmp/init.d/mysql start
+    /opt/lnmp/init.d/php-fpm start
+}
+
+lnmp_stop()
+{
+    echo "Stoping LNMP..."
+    /opt/lnmp/init.d/nginx stop
+    /opt/lnmp/init.d/mysql stop
+    /opt/lnmp/init.d/php-fpm stop
+}
+
+lnmp_reload()
+{
+    echo "Reload LNMP..."
+    /opt/lnmp/init.d/nginx reload
+    /opt/lnmp/init.d/mysql reload
+    /opt/lnmp/init.d/php-fpm reload
+}
+
+lnmp_kill()
+{
+    echo "Kill nginx,php-fpm,mysql process..."
+    killall nginx
+    killall mysqld
+    killall php-fpm
+    killall php-cgi
+    echo "done."
+}
+
+lnmp_status()
+{
+    /opt/lnmp/init.d/nginx status
+    if [ -f $PHPFPMPIDFILE ]; then
+        echo "php-fpm is runing!"
+    else
+        echo "php-fpm is stop!"
+    fi
+    /opt/lnmp/init.d/mysql status
+}
+
+Function_Mysql()
+{
+    case "$1" in
+    [aA][dD][dD])
+        Add_Database_Menu
+        Add_Database
+    ;;
+    [lL][iI][sS][tT])
+        List_Database
+    ;;
+    [dD][eE][lL])
+        Del_Database
+    ;;
+    [eE][xX][iI][tT])
+        exit 1
+    ;;
+    *)
+        echo "Usage: lnmp mysql {add|list|del}"
+        exit 1
+    ;;
+esac
+}
+
+Check_DB()
+{
+   MySQL_Bin="/opt/lnmp/mysql/bin/mysql"
+}
+
+Verify_MySQL_Password()
+{
+    read -p "verify your current MySQL root password: " mysql_root_password
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "quit"
+    if [ $? -eq 0 ]; then
+        echo "MySQL root password correct."
+    else
+        echo "MySQL root password incorrect!Please check!"
+        Verify_MySQL_Password
+    fi
+    if [ "${mysql_root_password}" = "" ]; then
+        Verify_MySQL_Password
+    fi
+}
+
+Enter_Database_Name()
+{
+    read -p "Enter database name: " database_name
+    if [ "${database_name}" = "" ]; then
+        echo "Database Name can't be empty!"
+        exit 1
+    fi
+}
+
+Add_Database_Menu()
+{
+    Enter_Database_Name
+    echo "Your will create a database and MySQL user with same name: ${database_name}"
+    read -p "Please enter password for mysql user ${database_name}: " mysql_password
+    echo "Your password: ${mysql_password} "
+}
+
+Add_Database()
+{
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "CREATE USER '${database_name}'@'127.0.0.1' IDENTIFIED BY '${mysql_password}'"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "CREATE USER '${database_name}'@'localhost' IDENTIFIED BY '${mysql_password}'"
+    [ $? -eq 0 ] && echo "User ${database_name} create Sucessfully." || echo "User ${database_name} already exists!"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "GRANT USAGE ON *.* TO '${database_name}'@'127.0.0.1' IDENTIFIED BY '${mysql_password}'"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "GRANT USAGE ON *.* TO '${database_name}'@'localhost' IDENTIFIED BY '${mysql_password}'"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "CREATE DATABASE ${database_name}"
+    [ $? -eq 0 ] && echo "Database: ${database_name} create Sucessfully." || echo "Database: ${database_name} already exists!"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "GRANT ALL PRIVILEGES ON ${database_name}.* TO '${database_name}'@'127.0.0.1';"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "GRANT ALL PRIVILEGES ON ${database_name}.* TO '${database_name}'@'localhost';"
+    [ $? -eq 0 ] && echo "GRANT ALL PRIVILEGES ON ${database_name} Sucessfully." || echo "GRANT ALL PRIVILEGES ON ${database_name} failed!"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES"
+    [ $? -eq 0 ] && echo "FLUSH PRIVILEGES Sucessfully." || echo "FLUSH PRIVILEGES failed!"
+}
+
+List_Database()
+{
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "SHOW DATABASES;"
+    [ $? -eq 0 ] && echo "List all databases Sucessfully." || echo "List all databases failed!"
+}
+
+Del_Database()
+{
+    List_Database
+    Enter_Database_Name
+    if [[ "${database_name}" = "information_schema" || "${database_name}" = "mysql" || "${database_name}" = "performance_schema" ]]; then
+        echo "MySQL System Database can't be delete!"
+        exit 1
+    fi
+    echo "Your will delete database and MySQL user with same name: ${database_name}"
+    echo "Sleep 10s,Press ctrl+c to cancel..."
+    sleep 10
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "DROP USER '${database_name}'@'127.0.0.1'"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "DROP USER '${database_name}'@'localhost'"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "DROP DATABASE ${database_name}"
+    [ $? -eq 0 ] && echo "Database: ${database_name} deleted Sucessfully." || echo "Database: ${database_name} not exist!"
+    ${MySQL_Bin} -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES"
+    [ $? -eq 0 ] && echo "FLUSH PRIVILEGES Sucessfully." || echo "FLUSH PRIVILEGES failed!"
+}
+
+Check_DB
+
+case "${arg1}" in
+    start)
+        lnmp_start
+        ;;
+    stop)
+        lnmp_stop
+        ;;
+    restart)
+        lnmp_stop
+        lnmp_start
+        ;;
+    reload)
+        lnmp_reload
+        ;;
+    kill)
+        lnmp_kill
+        ;;
+    status)
+        lnmp_status
+        ;;
+    nginx)
+        /opt/lnmp/init.d/nginx ${arg2}
+        ;;
+    mysql)
+        /opt/lnmp/init.d/mysql ${arg2}
+        ;;
+    php-fpm)
+        /opt/lnmp/init.d/php-fpm ${arg2}
+        ;;
+    database)
+        Verify_MySQL_Password
+        Function_Mysql ${arg2}
+        ;;
+    *)
+        echo "Usage: lnmp {start|stop|reload|restart|kill|status}"
+        echo "Usage: lnmp {nginx|mysql|php-fpm} {start|stop|reload|restart|kill|status}"
+esac
+exit
