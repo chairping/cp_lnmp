@@ -16,13 +16,13 @@ modify_root_password() {
 
 Install_MySQL_56() {
 
-	Echo_Blue "[+] Installing ${Mysql_Ver}..."
+    Echo_Blue "[+] Installing ${Mysql_Ver}..."
 
     groupadd mysql
     useradd -r -g mysql -s /bin/false mysql
 
-	rm -f /etc/my.cnf
-	Tar_Cd ${Mysql_Ver}.tar.gz ${Mysql_Ver}
+    rm -f /etc/my.cnf
+    Tar_Cd ${Mysql_Ver}.tar.gz ${Mysql_Ver}
     cmake \
     -DCMAKE_INSTALL_PREFIX=${LNMP_PATH}/mysql \
     -DSYSCONFDIR=${LNMP_PATH}/mysql \

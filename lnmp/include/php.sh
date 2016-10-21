@@ -50,16 +50,16 @@ Install_Redis() {
 
 Install_PHP_ext() {
    Echo_Blue "[+] Installing SeasLog ext"
-   ${LNMP_PATH}/php/bin/pecl install seaslog
+   ${LNMP_PATH}/php/bin/pecl install seaslog-1.6.9
 
    Echo_Blue "[+] Installing Xhprof ext"
    ${LNMP_PATH}/php/bin/pecl install xhprof-0.9.4
 
    Echo_Blue "[+] Installing memcached ext"
-   ${LNMP_PATH}/php/bin/pecl install memcached
+   ${LNMP_PATH}/php/bin/pecl install memcached-2.2.0
 
    Echo_Blue "[+] Installing redis ext"
-   ${LNMP_PATH}/php/bin/pecl install redis
+   ${LNMP_PATH}/php/bin/pecl install redis-2.2.8
 }
 
 
